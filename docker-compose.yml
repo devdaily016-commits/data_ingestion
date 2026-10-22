@@ -1,0 +1,33 @@
+# Local stand-ins for the Azure services in docs/B-technology-stack.md.
+# Postgres + pgvector  -> Azure Database for PostgreSQL
+# Azurite              -> ADLS Gen2 / Blob raw zone (mirrored; filesystem is the read path)
+# Service Bus          -> Postgres queue in pipeline/queue.py (same operations: lock,
+#                         complete, abandon, dead-letter). The Microsoft Service Bus
+#                         emulator depends on Azure SQL Edge, which is unreliable on
+#                         Apple Silicon, so it is not started here.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: hub
+      POSTGRES_PASSWORD: hub
+      POSTGRES_DB: contexthub
+    ports:
+      - "54329:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hub -d contexthub"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:3.33.0
+    ports:
+      - "10000:10000"
+    command: azurite --silent --location /data --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0
+
+volumes:
+  pgdata:
